@@ -1,0 +1,11 @@
+services:
+  t4k3r:
+    container_name: t4k3r
+    build: .
+    command: sh -c "python -m main.py"
+    restart: always
+    volumes:
+      - ./data:/app/data
+
+volumes:
+    data:

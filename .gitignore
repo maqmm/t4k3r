@@ -1,0 +1,6 @@
+data/app.py
+data/data.json
+data/session_name.session
+data/session_name.session-journal
+**/__pycache__/
+.env

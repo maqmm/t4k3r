@@ -19,6 +19,21 @@ file_path = os.getenv('EMOJI_FILE_PATH')
 api_id = os.getenv('API_ID')
 api_hash = os.getenv('API_HASH')
 
+#emojis
+e_kick = '[🚫](emoji/5462882007451185227)'
+e_ban = '[🚫](emoji/5454350746407419714)'
+e_delete = '[😵](emoji/5463274047771000031)'
+e_already = '[⚰️](emoji/5454350746407419714)'
+e_add = '[✅](emoji/5462956611033117422)'
+e_fix = '[🛠](emoji/5462921117423384478)'
+e_l_error = '[😵](emoji/5465265370703080100)'
+e_r_error = e_fix
+e_cleared = '[😵](emoji/5226702984204797593)'
+e_invisible = '[🗿](emoji/5323411714836810037)'
+e_omg = '[😵](emoji/5454182632797521992)'  # OMG
+e_sad = '[😵](emoji/5463137996091962323)'  # SAD
+e_no = 5337323753858685200
+
 # links - ссылка на пак : массив из айди эмодзи
 # exceptions - ссылка на пак : массив из айди эмодзи
 # message_background_emoji - ссылка на пак : массив адаптивных
@@ -94,7 +109,7 @@ async def handler_add(event):
         if re.match(r'(?i)\.del$', event.message.message):
             exceptions_id = data["exceptions"]
             emoji_chunks = [exceptions_id[i:i + 96] for i in range(0, len(exceptions_id), 96)]  # Разбиваем список на части по 96 элементов
-            text = f'[🚫](emoji/5462882007451185227)Всего исключено **{len(exceptions_id)}** эмодзи:'
+            text = f'{e_kick}Всего исключено **{len(exceptions_id)}** эмодзи:'
             await client.edit_message(event.chat_id, event.id, text)
             # Для каждого чанка создаем новое сообщение
             for chunk in emoji_chunks:
@@ -117,7 +132,7 @@ async def handler_add(event):
                         text2 += f'[🚫](emoji/{value})'
                         i += 1
 
-                text1 = f'[🚫](emoji/5454350746407419714)Было исключено **{i}** эмодзи:\n\n'
+                text1 = f'{e_ban}Было исключено **{i}** эмодзи:\n\n'
                 await client.edit_message(event.chat_id, event.id, f'{text1}{text2}')
                 save_json(file_path, data)
 
@@ -126,7 +141,7 @@ async def handler_add(event):
                 delete_ids = [exceptions for exceptions in data["exceptions"] if exceptions in document_ids]
                 data["exceptions"] = [exceptions for exceptions in data["exceptions"] if exceptions not in document_ids]
 
-                text = f'[😵](emoji/5463274047771000031)Удалены исключения (**{len(delete_ids)}** шт):\n\n'
+                text = f'{e_deleteУдалены исключения (**{len(delete_ids)}** шт):\n\n'
                 for emoji in delete_ids:
                     text += f'[🗡](emoji/{emoji})'
 
@@ -147,7 +162,7 @@ async def handler_add(event):
             command_text = ".add"
             bg = " из статуса"
             just = " УЖЕ "
-            save_emoji = "[⚰️](emoji/5454350746407419714)"
+            save_emoji = e_already
             add_del = "удалён"
 
             document_ids = [document.id for document in sticker_set.documents]
@@ -155,15 +170,14 @@ async def handler_add(event):
             add_or_del = remove_pack
             if re.match(r'(?i)\.add', command):
                 add_or_del = add_pack
-                save_emoji = '[✅](emoji/5462956611033117422)'
+                save_emoji = e_add
                 add_del = "добавлен"
                 bg = " в статус"
                 command_text = ".del"
 
             if re.match(r'(?i)\.addbg', command):
                 if adaptive is False:
-                    fix_emoji = '[🛠](emoji/5462921117423384478)'
-                    text = f'{fix_emoji}[Набор должен быть АДАПТИВНЫМ]({url}){fix_emoji}'
+                    text = f'{e_fix}[Набор должен быть АДАПТИВНЫМ]({url}){e_fix}'
                     await client.edit_message(event.chat_id, event.id, text, link_preview=False)
                     return
                 array_name = "message_background_emoji"
@@ -192,7 +206,7 @@ async def handler_add(event):
             save_json(file_path, data)
 
     except Exception as e:
-        text = f'[😵](emoji/5465265370703080100)**АШИПКА!**[😵](emoji/5462921117423384478)\n{e}'
+        text = f'{e_l_error}**АШИПКА!**{e_r_error}\n{e}'
         await client.edit_message(event.chat_id, event.id, text)
 
 
@@ -222,7 +236,7 @@ async def handler_clear(event):
         return
 
     save_json(file_path, data)
-    text = f'[😵](emoji/5226702984204797593){msg}[😵](emoji/5226702984204797593)'
+    text = f'{e_cleared}{msg}[😵]{e_cleared}'
     await client.edit_message(event.chat_id, event.id, text)
 
 
@@ -270,8 +284,8 @@ async def handler_stone(event):
 🟫🟫🟥🟫🟫🟥🟫🟫
 🟫🟫🟫🟫🟫🟫🟫🟫
 🟫🟥🟥🟥🟥🟥🟥🟫'''
-    text1 = text1.replace('🟫', '[🗿](emoji/5323411714836810037)')
-    text2 = text2.replace('🟫', '[🗿](emoji/5323411714836810037)')
+    text1 = text1.replace('🟫', e_invisible)
+    text2 = text2.replace('🟫', e_invisible)
     text = [text1, text2, text1, text2, text1]
 
     stone = [5796270094954794959, 5796528609036341197, 5796151871685006544, 5794130221988844552, 5796154775082896990, 5794315425273614049, 5794405619586829877, 5796637413442850695, 5796181768952352381, 5794036222334603423, 5796662569066303188, 5794254763155525471, 5796149316179463874, 5796173161837891411, 5796578963232920077, 5794204000937055520, 5796658467372536325, 5796656182449933846, 5793905539364687563, 5796303239217418190, 5794380773201022246, 5794051787296084051, 5796141404849705080, 5794038760660274509, 5794180571890455776, 5794120871845040459, 5796694424838737320, 5796382747652001425, 5794287142913969546, 5794135015172345363, 5794109782239482498, 5796503277319228628, 5796582124328849695, 5794163374841401278, 5794129105297348415, 5796334970435800723, 5796211743529111404, 5796636618873900998, 5794401062626529888, 5796615676613365556, 5213305508034783384, 5172645971766543291, 5208878706717636743, 5208601921845208724, 5192683149548605430]
@@ -306,13 +320,11 @@ async def handler_all(event):
         total_count += len(values)
 
     if total_count == 0:
-        emoji_sad = '[😵](emoji/5463137996091962323)'  # SAD
-        text = f'{emoji_sad}Всего **{total_count}** эмоджи**{status_or_bg}**{emoji_sad}\n'
+        text = f'{e_sad}Всего **{total_count}** эмоджи**{status_or_bg}**{e_sad}\n'
         await client.edit_message(event.chat_id, event.id, text)
         return
 
-    emoji_omg = '[😵](emoji/5454182632797521992)'  # OMG
-    text = f'{emoji_omg}Всего **{total_count}** эмоджи**{status_or_bg}**{emoji_omg}\n\n'
+    text = f'{e_omg}Всего **{total_count}** эмоджи**{status_or_bg}**{e_omg}\n\n'
 
     for index, url in enumerate(link_names, start=1):
         emoji_ids = data[array_name][url][:5]
@@ -367,11 +379,11 @@ async def change_status_emoji():
 
             random_elements = await get_random_ids(data, "links")
             if not random_elements:
-                random_elements = [5462921117423384478]
+                random_elements = [e_fix]
 
             for emoji_id in random_elements:
                 time_sleep = random.randint(15, 30)
-                if random_elements == [5462921117423384478]:
+                if random_elements == [e_fix]:
                     time_sleep = random.randint(55, 75)
 
                 emoji = emoji_id
@@ -398,7 +410,7 @@ async def change_profile_background_emoji_colors():
             random_elements = await get_random_ids(data, "message_background_emoji")
             colors_ids = await generate_array(len(random_elements), 16)
             if not random_elements:
-                random_elements = [5337323753858685200]  # кубик 20
+                random_elements = [e_no]  # кубик 20
                 colors_ids = [10]  # фиолетово-КАКОЙ ТО Я ДАЛЬТОНИК
 
             for index, emoji_id in enumerate(random_elements, start=0):
@@ -423,7 +435,7 @@ async def change_message_colors_and_emoji():
             random_elements = await get_random_ids(data, "message_background_emoji")
             colors_ids = await generate_array(len(random_elements), 21)
             if not random_elements:
-                random_elements = [5337323753858685200]  # кубик 20
+                random_elements = [e_no]  # кубик 20
                 colors_ids = [9]  # фиолетово-КАКОЙ ТО Я ДАЛЬТОНИК
 
             for index, emoji_id in enumerate(random_elements, start=0):

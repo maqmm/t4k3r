@@ -180,7 +180,13 @@ async def handler_add(event):
             if state is True:
                 just = " "
 
-            text = f'{save_emoji}[Набор{just}{add_del}{bg}]({url}){save_emoji}```{title} ({count} шт)````{command_text} {url}`'
+            emoji_ids = document_ids[:10]
+            emojis = ""
+
+            for emoji_id in emoji_ids:
+                emojis += f'[😵](emoji/{emoji_id})'
+            # text = f'{save_emoji}[Набор{just}{add_del}{bg}]({url}){save_emoji}```{title} ({count} шт)````{command_text} {url}`'
+            text = f'{save_emoji}Набор{just}**{add_del}{bg}**{save_emoji}\n\n{emojis}\n\n[{title} ({count} шт)]({url})\n\n`{command_text} {url}`'
 
             await client.edit_message(event.chat_id, event.id, text, link_preview=False)
             save_json(file_path, data)

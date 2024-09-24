@@ -141,7 +141,7 @@ async def handler_add(event):
                 delete_ids = [exceptions for exceptions in data["exceptions"] if exceptions in document_ids]
                 data["exceptions"] = [exceptions for exceptions in data["exceptions"] if exceptions not in document_ids]
 
-                text = f'{e_deleteУдалены исключения (**{len(delete_ids)}** шт):\n\n'
+                text = f'{e_delete}Удалены исключения (**{len(delete_ids)}** шт):\n\n'
                 for emoji in delete_ids:
                     text += f'[🗡](emoji/{emoji})'
 

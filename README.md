@@ -32,6 +32,13 @@ thats all =)
 
 __If you have standalone installation of Compose use "docker compose" with "- between__
 
+## For updates
+
+```
+git pull
+docker-compose up -d --build
+```
+
 ## About structure
 
 _In writing process..._

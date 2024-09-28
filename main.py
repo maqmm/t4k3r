@@ -19,20 +19,43 @@ file_path = os.getenv('EMOJI_FILE_PATH')
 api_id = os.getenv('API_ID')
 api_hash = os.getenv('API_HASH')
 
-#emojis
-e_kick = '[🚫](emoji/5462882007451185227)'
-e_ban = '[🚫](emoji/5454350746407419714)'
-e_delete = '[😵](emoji/5463274047771000031)'
-e_already = '[⚰️](emoji/5454350746407419714)'
-e_add = '[✅](emoji/5462956611033117422)'
-e_fix = '[🛠](emoji/5462921117423384478)'
+# emojis
+e_del_list = '[🚫](emoji/5462882007451185227)'  # Всего исключено (no)
+e_ban = '[🚫](emoji/5454350746407419714)'  # Было исключено & удалён из статуса (kick)
+e_delete = '[😵](emoji/5463274047771000031)'  # Удалены исключения (frag +1)
+e_add = '[✅](emoji/5462956611033117422)'  # добавлен в статус (save)
+e_fix = '[🛠](emoji/5462921117423384478)'  # FIX
 e_l_error = '[😵](emoji/5465265370703080100)'
 e_r_error = e_fix
-e_cleared = '[😵](emoji/5226702984204797593)'
+e_cleared = '[😵](emoji/5226702984204797593)'  # список исключений очищен (wipe)
 e_invisible = '[🗿](emoji/5323411714836810037)'
 e_omg = '[😵](emoji/5454182632797521992)'  # OMG
 e_sad = '[😵](emoji/5463137996091962323)'  # SAD
-e_no = 5337323753858685200
+e_default = 5337323753858685200  # стандартный при пустом json (кубик 20)
+
+# message colors
+# номер ряда (в приложении) - номер цвета в ряду = id
+# 1-1 = 5     2-1 = 12     3-1 = 14
+# 1-2 = 3     2-2 = 10     3-2 = 15
+# 1-3 = 1     2-3 = 8      3-3 = 16
+# 1-4 = 0     2-4 = 7      3-4 = 17
+# 1-5 = 2     2-5 = 9      3-5 = 18
+# 1-6 = 4     2-6 = 11     3-6 = 19
+# 1-7 = 6     2-7 = 13     3-7 = 20
+default_message_color_id = 9
+
+# profile colors
+# номер ряда (в приложении) - номер цвета в ряду = id
+# 1-1 = 5    2-1 = 13
+# 1-2 = 3    2-2 = 11
+# 1-3 = 1    2-3 = 9
+# 1-4 = 0    2-4 = 8
+# 1-5 = 2    2-5 = 10
+# 1-6 = 4    2-6 = 12
+# 1-7 = 6    2-7 = 14
+# 1-8 = 7    2-8 = 15
+default_profile_color_id = 10
+
 
 # links - ссылка на пак : массив из айди эмодзи
 # exceptions - ссылка на пак : массив из айди эмодзи
@@ -109,7 +132,7 @@ async def handler_add(event):
         if re.match(r'(?i)\.del$', event.message.message):
             exceptions_id = data["exceptions"]
             emoji_chunks = [exceptions_id[i:i + 96] for i in range(0, len(exceptions_id), 96)]  # Разбиваем список на части по 96 элементов
-            text = f'{e_kick}Всего исключено **{len(exceptions_id)}** эмодзи:'
+            text = f'{e_del_list}Всего исключено **{len(exceptions_id)}** эмодзи:'
             await client.edit_message(event.chat_id, event.id, text)
             # Для каждого чанка создаем новое сообщение
             for chunk in emoji_chunks:
@@ -162,7 +185,7 @@ async def handler_add(event):
             command_text = ".add"
             bg = " из статуса"
             just = " УЖЕ "
-            save_emoji = e_already
+            save_emoji = e_ban
             add_del = "удалён"
 
             document_ids = [document.id for document in sticker_set.documents]
@@ -236,7 +259,7 @@ async def handler_clear(event):
         return
 
     save_json(file_path, data)
-    text = f'{e_cleared}{msg}[😵]{e_cleared}'
+    text = f'{e_cleared}{msg}{e_cleared}'
     await client.edit_message(event.chat_id, event.id, text)
 
 
@@ -245,15 +268,15 @@ async def handler_commands(event):
     text = f'''
 <code>.add </code><em>[ссылка на пак]</em> — добавить пак для статуса
 <code>.add </code><em>[эмодзи]</em> — удалить эмозди из исключений
-<code>.addbg </code><em>[ссылка на пак]</em> — добавить пак в фон сообщений
+<code>.addbg </code><em>[ссылка на пак]</em> — добавить пак в фон профиля и сообщений
 
 <code>.del</code> — список общих исключений
 <code>.del </code><em>[ссылка на пак]</em> — удалить пак из статуса
 <code>.del </code><em>[эмодзи]</em> — исключить эмозди
-<code>.delbg </code><em>[ссылка на пак]</em> — удалить пак из фона сообщений
+<code>.delbg </code><em>[ссылка на пак]</em> — удалить пак из фона профиля и  сообщений
 
 <code>.all</code> — показать все наборы для статуса
-<code>.allbg</code> — показать все наборы для фона сообщений
+<code>.allbg</code> — показать все наборы для фона профиля и сообщений
 
 <code>.clearstatus</code> — очистить список статуса
 <code>.clearexc</code> — очистить список исключений
@@ -379,11 +402,11 @@ async def change_status_emoji():
 
             random_elements = await get_random_ids(data, "links")
             if not random_elements:
-                random_elements = [e_fix]
+                random_elements = [e_default]
 
             for emoji_id in random_elements:
                 time_sleep = random.randint(15, 30)
-                if random_elements == [e_fix]:
+                if random_elements == [e_default]:
                     time_sleep = random.randint(55, 75)
 
                 emoji = emoji_id
@@ -410,8 +433,8 @@ async def change_profile_background_emoji_colors():
             random_elements = await get_random_ids(data, "message_background_emoji")
             colors_ids = await generate_array(len(random_elements), 16)
             if not random_elements:
-                random_elements = [e_no]  # кубик 20
-                colors_ids = [10]  # фиолетово-КАКОЙ ТО Я ДАЛЬТОНИК
+                random_elements = [e_default]  # кубик 20
+                colors_ids = [default_profile_color_id]
 
             for index, emoji_id in enumerate(random_elements, start=0):
                 await client(UpdateColorRequest(
@@ -435,8 +458,8 @@ async def change_message_colors_and_emoji():
             random_elements = await get_random_ids(data, "message_background_emoji")
             colors_ids = await generate_array(len(random_elements), 21)
             if not random_elements:
-                random_elements = [e_no]  # кубик 20
-                colors_ids = [9]  # фиолетово-КАКОЙ ТО Я ДАЛЬТОНИК
+                random_elements = [e_default]
+                colors_ids = [default_message_color_id]
 
             for index, emoji_id in enumerate(random_elements, start=0):
                 await client(UpdateColorRequest(

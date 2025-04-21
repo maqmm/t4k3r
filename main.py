@@ -10,7 +10,8 @@ from telethon.tl.functions.messages import GetStickerSetRequest
 from telethon.tl.types import EmojiStatus, InputStickerSetShortName, MessageEntityCustomEmoji, MessageEntityUrl
 from telethon import types
 from telethon.extensions import markdown
-# from datetime import datetime
+from datetime import datetime
+from collections import deque
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -56,13 +57,15 @@ default_message_color_id = 9
 # 1-8 = 7    2-8 = 15
 default_profile_color_id = 10
 
+# массив с логами последних эмоги
+logs_arr = deque(maxlen=100)
 
 # links - ссылка на пак : массив из айди эмодзи
 # exceptions - ссылка на пак : массив из айди эмодзи
 # message_background_emoji - ссылка на пак : массив адаптивных
 clean_json = {"links": {}, "exceptions": [], "message_background_emoji": {}}
 
-client = TelegramClient(sesion_name, api_id, api_hash, system_version="Windows 10", app_version='5.3.1 x64', device_model='MS-7B89', system_lang_code='ru-RU', lang_code='en')
+client = TelegramClient(sesion_name, api_id, api_hash, system_version="Windows 10", app_version='5.13.1 x64', device_model='MS-7B89', system_lang_code='ru-RU', lang_code='en')
 
 
 # обман чтобы набрать классы (для работы этой конструкции [✅](emoji/5454014806950429357))
@@ -263,6 +266,12 @@ async def handler_clear(event):
     await client.edit_message(event.chat_id, event.id, text)
 
 
+@client.on(events.NewMessage(outgoing=True, pattern=r'(?i)\.logs'))
+async def handler_logs(event):
+    text = '\n'.join(map(str, logs_arr))
+    await client.edit_message(event.chat_id, event.id, text)
+
+
 @client.on(events.NewMessage(outgoing=True, pattern=r'(?i)\.info'))
 async def handler_commands(event):
     text = f'''
@@ -282,6 +291,8 @@ async def handler_commands(event):
 <code>.clearexc</code> — очистить список исключений
 <code>.clearbg</code> — очистить список фона
 <code>.clearall</code> — очистить ВСЕ списки
+
+<code>.logs</code> — показать последние 100 эмоджи профиля (~36 минут)
 
 <code>.🗿</code> — чертила
     '''
@@ -383,7 +394,7 @@ async def get_random_ids(data, array_name):
     filtered_items = [num for num in all_items if num not in data['exceptions']]
     random.shuffle(filtered_items)
 
-    return (filtered_items)
+    return filtered_items[:10000]
 
 
 # Функция для подгонки массива
@@ -395,6 +406,7 @@ async def generate_array(length, num):
     return result[:length]  # Обрезаем лишние элементы
 
 
+# профиль эмозди
 async def change_status_emoji():
     try:
         while True:
@@ -409,13 +421,12 @@ async def change_status_emoji():
                 if random_elements == [e_default]:
                     time_sleep = random.randint(55, 75)
 
-                emoji = emoji_id
-                # time = datetime.now().strftime("%H:%M:%S")
-                # print(f'{time} {emoji}')
-                status = EmojiStatus(emoji)
+                time = datetime.now().strftime("%H:%M:%S")
+                status = EmojiStatus(emoji_id)
                 # Отправляем запрос на обновление статуса
                 await client(UpdateEmojiStatusRequest(status))
-                # Ждем 30 секунд
+                logs_arr.append(f"[🗿](emoji/{emoji_id}) – {time}")
+                # Ждем 15-30 секунд
                 await asyncio.sleep(time_sleep)
 
     except Exception as e:
@@ -423,7 +434,7 @@ async def change_status_emoji():
         await asyncio.sleep(300)
 
 
-# профиль эмозди и цвет
+# профиль фон эмозди и цвет
 async def change_profile_background_emoji_colors():
     try:
         await asyncio.sleep(random.randint(1, 7))

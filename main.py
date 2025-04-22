@@ -3,6 +3,8 @@ import random
 import json
 import os
 import re
+import itertools
+
 
 from telethon import TelegramClient, events
 from telethon.tl.functions.account import UpdateEmojiStatusRequest, UpdateColorRequest
@@ -12,6 +14,9 @@ from telethon import types
 from telethon.extensions import markdown
 from datetime import datetime
 from collections import deque
+from itertools import islice
+
+# from app import sesion_name, file_path, api_id, api_hash
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -268,7 +273,17 @@ async def handler_clear(event):
 
 @client.on(events.NewMessage(outgoing=True, pattern=r'(?i)\.logs'))
 async def handler_logs(event):
-    text = '\n'.join(map(str, logs_arr))
+
+    count = event.message.message.rsplit(' ', 1)[-1]
+    try:
+        count = int(count)
+    except Exception:
+        count = 5
+
+    if not 0 < count < 101:
+        count = 5
+    last_logs = islice(logs_arr, max(0, len(logs_arr) - count), None)
+    text = '\n'.join(map(str, last_logs))
     await client.edit_message(event.chat_id, event.id, text)
 
 
@@ -292,7 +307,7 @@ async def handler_commands(event):
 <code>.clearbg</code> — очистить список фона
 <code>.clearall</code> — очистить ВСЕ списки
 
-<code>.logs</code> — показать последние 100 эмоджи профиля (~36 минут)
+<code>.logs </code><em>[N]</em> — показать последние N (до 100) эмоджи профиля
 
 <code>.🗿</code> — чертила
     '''
@@ -384,17 +399,18 @@ async def handler_all(event):
             await client.send_message(event.chat_id, text, link_preview=False)
 
 
-async def get_random_ids(data, array_name):
-    all_items = []
+async def get_random_ids(data, array_name, max_len=2000):
+    exceptions = set(data['exceptions'])
+    all_items = itertools.chain.from_iterable(
+        (num for num in array if num not in exceptions)
+        for array in data[array_name].values())
 
-    # Собираем все элементы из всех массивов
-    for array in data[array_name].values():
-        all_items.extend(array)
+    all_items = list(all_items)  # Materialize only once
+    if len(all_items) <= max_len:
+        random.shuffle(all_items)
+        return all_items
 
-    filtered_items = [num for num in all_items if num not in data['exceptions']]
-    random.shuffle(filtered_items)
-
-    return filtered_items[:10000]
+    return random.sample(all_items, max_len)
 
 
 # Функция для подгонки массива
@@ -410,16 +426,15 @@ async def generate_array(length, num):
 async def change_status_emoji():
     try:
         while True:
-            data = load_json(file_path)
+            data = await asyncio.to_thread(load_json, file_path)
 
             random_elements = await get_random_ids(data, "links")
             if not random_elements:
                 random_elements = [e_default]
+            is_default = random_elements == [e_default]
 
             for emoji_id in random_elements:
-                time_sleep = random.randint(15, 30)
-                if random_elements == [e_default]:
-                    time_sleep = random.randint(55, 75)
+                time_sleep = random.randint(55, 75) if is_default else random.randint(15, 30)  # 15-30 время между статусами
 
                 time = datetime.now().strftime("%H:%M:%S")
                 status = EmojiStatus(emoji_id)
@@ -439,7 +454,7 @@ async def change_profile_background_emoji_colors():
     try:
         await asyncio.sleep(random.randint(1, 7))
         while True:
-            data = load_json(file_path)
+            data = await asyncio.to_thread(load_json, file_path)
 
             random_elements = await get_random_ids(data, "message_background_emoji")
             colors_ids = await generate_array(len(random_elements), 16)
@@ -464,7 +479,7 @@ async def change_message_colors_and_emoji():
     try:
         await asyncio.sleep(random.randint(1, 7))
         while True:
-            data = load_json(file_path)
+            data = await asyncio.to_thread(load_json, file_path)
 
             random_elements = await get_random_ids(data, "message_background_emoji")
             colors_ids = await generate_array(len(random_elements), 21)

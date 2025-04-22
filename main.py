@@ -63,7 +63,7 @@ default_message_color_id = 9
 default_profile_color_id = 10
 
 # массив с логами последних эмоги
-logs_arr = deque(maxlen=2000)
+logs_arr = deque(maxlen=100)
 
 # links - ссылка на пак : массив из айди эмодзи
 # exceptions - ссылка на пак : массив из айди эмодзи
@@ -280,7 +280,7 @@ async def handler_logs(event):
     except Exception:
         count = 5
 
-    if not 0 < count < 2001:
+    if not 0 < count < 101:
         count = 5
     last_logs = islice(logs_arr, max(0, len(logs_arr) - count), None)
     text = '\n'.join(map(str, last_logs))
@@ -307,7 +307,7 @@ async def handler_commands(event):
 <code>.clearbg</code> — очистить список фона
 <code>.clearall</code> — очистить ВСЕ списки
 
-<code>.logs </code><em>[N]</em> — показать последние N (до 2000) эмоджи профиля
+<code>.logs </code><em>[N]</em> — показать последние N (до 100) эмоджи профиля
 
 <code>.🗿</code> — чертила
     '''

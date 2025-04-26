@@ -15,7 +15,7 @@ from datetime import datetime
 from collections import deque
 from itertools import islice
 
-# from app import sesion_name, file_path, api_id, api_hash
+# from data.app import sesion_name, file_path, api_id, api_hash
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -445,7 +445,7 @@ async def change_status_emoji():
 
     except Exception as e:
         print(e)
-        logs_arr.append(f"{e}")
+        logs_arr.append(f"{e} {emoji_id}")
         await asyncio.sleep(300)
 
 

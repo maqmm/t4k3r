@@ -5,7 +5,6 @@ import os
 import re
 import itertools
 
-
 from telethon import TelegramClient, events
 from telethon.tl.functions.account import UpdateEmojiStatusRequest, UpdateColorRequest
 from telethon.tl.functions.messages import GetStickerSetRequest
@@ -446,6 +445,7 @@ async def change_status_emoji():
 
     except Exception as e:
         print(e)
+        logs_arr.append(f"{e}")
         await asyncio.sleep(300)
 
 

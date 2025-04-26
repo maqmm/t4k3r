@@ -11,11 +11,11 @@ from telethon.tl.functions.messages import GetStickerSetRequest
 from telethon.tl.types import EmojiStatus, InputStickerSetShortName, MessageEntityCustomEmoji, MessageEntityUrl
 from telethon import types
 from telethon.extensions import markdown
+from telethon.errors.rpcerrorlist import DocumentInvalidError
+
 from datetime import datetime
 from collections import deque
 from itertools import islice
-
-# from data.app import sesion_name, file_path, api_id, api_hash
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -62,7 +62,12 @@ default_message_color_id = 9
 default_profile_color_id = 10
 
 # массив с логами последних эмоги
-logs_arr = deque(maxlen=100)
+logs = {
+    'main': deque(maxlen=100),  # основные эмоги профиля
+    'bg': deque(maxlen=100),    # эмоги фона профиля
+    'msg': deque(maxlen=100)    # эмоги фона сообщений
+}
+
 
 # links - ссылка на пак : массив из айди эмодзи
 # exceptions - ссылка на пак : массив из айди эмодзи
@@ -134,7 +139,7 @@ def remove_pack(data, array_name, link_name, _):
 @client.on(events.NewMessage(outgoing=True, pattern=r'(?i)\.(add|del)'))
 async def handler_add(event):
     try:
-        data = load_json(file_path)
+        data = await asyncio.to_thread(load_json, file_path)
         # если просто .del
         if re.match(r'(?i)\.del$', event.message.message):
             exceptions_id = data["exceptions"]
@@ -189,7 +194,7 @@ async def handler_add(event):
             count = sticker_set.set.count
             adaptive = sticker_set.set.text_color
             array_name = "links"
-            command_text = ".add"
+            command_text = ".add"  # на команду del
             bg = " из статуса"
             just = " УЖЕ "
             save_emoji = e_ban
@@ -203,7 +208,7 @@ async def handler_add(event):
                 save_emoji = e_add
                 add_del = "добавлен"
                 bg = " в статус"
-                command_text = ".del"
+                command_text = ".add"  # на команду add
 
             if re.match(r'(?i)\.addbg', command):
                 if adaptive is False:
@@ -211,12 +216,12 @@ async def handler_add(event):
                     await client.edit_message(event.chat_id, event.id, text, link_preview=False)
                     return
                 array_name = "message_background_emoji"
-                command_text = ".delbg"
+                command_text = ".addbg"  # на команду addbg
                 bg = " в фон"
 
             elif re.match(r'(?i)\.delbg', command):
                 array_name = "message_background_emoji"
-                command_text = ".addbg"
+                command_text = ".addbg"  # на команду delbg
                 bg = " из фона"
 
             state = add_or_del(data, array_name, url, document_ids)
@@ -242,7 +247,7 @@ async def handler_add(event):
 
 @client.on(events.NewMessage(outgoing=True, pattern=r'(?i)\.clear'))
 async def handler_clear(event):
-    data = load_json(file_path)
+    data = await asyncio.to_thread(load_json, file_path)
 
     if re.match(r'(?i)\.clearstatus$', event.message.message):
         data["links"] = clean_json["links"]
@@ -272,7 +277,6 @@ async def handler_clear(event):
 
 @client.on(events.NewMessage(outgoing=True, pattern=r'(?i)\.logs'))
 async def handler_logs(event):
-
     count = event.message.message.rsplit(' ', 1)[-1]
     try:
         count = int(count)
@@ -281,8 +285,25 @@ async def handler_logs(event):
 
     if not 0 < count < 101:
         count = 5
-    last_logs = islice(logs_arr, max(0, len(logs_arr) - count), None)
-    text = '\n'.join(map(str, last_logs))
+    # фильтры на типы логов
+    if re.match(r'(?i)\.logsbg', event.message.message):
+        last_logs = islice(logs["bg"], max(0, len(logs["bg"]) - count), None)
+        if len(logs["bg"]) < count:
+            count = len(logs["bg"])
+        text = f"{count} эмоджи **фона профиля**:\n"
+
+    elif re.match(r'(?i)\.logsmsg', event.message.message):
+        last_logs = islice(logs["msg"], max(0, len(logs["msg"]) - count), None)
+        if len(logs["msg"]) < count:
+            count = len(logs["msg"])
+        text = f"{count} эмоджи **фона сообщений**:\n"
+    else:
+        last_logs = islice(logs["main"], max(0, len(logs["main"]) - count), None)
+        if len(logs["main"]) < count:
+            count = len(logs["main"])
+        text = f"{count} эмоджи **профиля**:\n"
+
+    text += '\n'.join(map(str, last_logs))
     await client.edit_message(event.chat_id, event.id, text)
 
 
@@ -307,6 +328,8 @@ async def handler_commands(event):
 <code>.clearall</code> — очистить ВСЕ списки
 
 <code>.logs </code><em>[N]</em> — показать последние N (до 100) эмоджи профиля
+<code>.logsmsg </code><em>[N]</em> — показать последние N (до 100) эмоджи фона сообщений
+<code>.logsbg </code><em>[N]</em> — показать последние N (до 100) эмоджи фона профиля
 
 <code>.🗿</code> — чертила
     '''
@@ -350,7 +373,7 @@ async def handler_stone(event):
 
 @client.on(events.NewMessage(outgoing=True, pattern=r'(?i)\.all'))
 async def handler_all(event):
-    data = load_json(file_path)
+    data = await asyncio.to_thread(load_json, file_path)
 
     if re.match(r'(?i)\.allbg', event.message.message.split(' ', 1)[0]):
         array_name = "message_background_emoji"
@@ -364,15 +387,16 @@ async def handler_all(event):
     link_names = list(data[array_name].keys())
 
     total_count = 0
+    total_packs = len(data[array_name])  # вывод количества наборов в .all
     for values in data[array_name].values():
         total_count += len(values)
 
     if total_count == 0:
-        text = f'{e_sad}Всего **{total_count}** эмоджи**{status_or_bg}**{e_sad}\n'
+        text = f'{e_sad}Всего **{total_count}** эмоджи**{status_or_bg}**{e_sad}'
         await client.edit_message(event.chat_id, event.id, text)
         return
 
-    text = f'{e_omg}Всего **{total_count}** эмоджи**{status_or_bg}**{e_omg}\n\n'
+    text = f'{e_omg}Всего **{total_count}** эмоджи**{status_or_bg}**{e_omg}\n{e_invisible}From **{total_packs}** packs\n\n'  # вывод количества наборов в .all
 
     for index, url in enumerate(link_names, start=1):
         emoji_ids = data[array_name][url][:5]
@@ -398,7 +422,7 @@ async def handler_all(event):
             await client.send_message(event.chat_id, text, link_preview=False)
 
 
-async def get_random_ids(data, array_name, max_len=2000):
+async def get_random_ids(data, array_name, max_len=27000):  # ~неделя неповтораящихся
     exceptions = set(data['exceptions'])
     all_items = itertools.chain.from_iterable(
         (num for num in array if num not in exceptions)
@@ -421,64 +445,90 @@ async def generate_array(length, num):
     return result[:length]  # Обрезаем лишние элементы
 
 
+# удаление из json наборов которых больше нет (владелец удалил)
+async def remove_deleted_packs(emoji_id, array_name):
+    data = await asyncio.to_thread(load_json, file_path)
+    for url, ids in data[array_name].items():
+        if emoji_id in ids:
+            remove_pack(data, array_name, url, None)
+            save_json(file_path, data)
+            for log in logs.values():
+                log.append(f"Удалён набор: {url}")
+            print(f"Удалён набор: {url}")
+            break
+
+
 # профиль эмозди
 async def change_status_emoji():
-    try:
-        while True:
+    array_name_in_json = "links"
+    while True:
+        try:
             data = await asyncio.to_thread(load_json, file_path)
 
-            random_elements = await get_random_ids(data, "links")
+            random_elements = await get_random_ids(data, array_name_in_json)
             if not random_elements:
                 random_elements = [e_default]
-            is_default = random_elements == [e_default]
 
             for emoji_id in random_elements:
-                time_sleep = random.randint(55, 75) if is_default else random.randint(15, 30)  # 15-30 время между статусами
+                time_sleep = random.randint(15, 30)  # время смены эмоги в профиле
+                if random_elements == [e_default]:
+                    time_sleep = random.randint(55, 75)
 
                 time = datetime.now().strftime("%H:%M:%S")
                 status = EmojiStatus(emoji_id)
                 # Отправляем запрос на обновление статуса
                 await client(UpdateEmojiStatusRequest(status))
-                logs_arr.append(f"[🗿](emoji/{emoji_id}) – {time}")
+                logs["main"].append(f"[🗿](emoji/{emoji_id}) – {time}")
                 # Ждем 15-30 секунд
                 await asyncio.sleep(time_sleep)
 
-    except Exception as e:
-        print(e)
-        logs_arr.append(f"{e} {emoji_id}")
-        await asyncio.sleep(300)
+        except DocumentInvalidError as e:
+            print(datetime.now(), e)
+            await remove_deleted_packs(emoji_id, array_name_in_json)
+            await asyncio.sleep(5)
+        except Exception as e:
+            print(datetime.now(), e)
+            await asyncio.sleep(300)
 
 
 # профиль фон эмозди и цвет
 async def change_profile_background_emoji_colors():
-    try:
-        await asyncio.sleep(random.randint(1, 7))
-        while True:
+    array_name_in_json = "message_background_emoji"
+    await asyncio.sleep(random.randint(2, 4))
+    while True:
+        try:
             data = await asyncio.to_thread(load_json, file_path)
 
-            random_elements = await get_random_ids(data, "message_background_emoji")
+            random_elements = await get_random_ids(data, array_name_in_json)
             colors_ids = await generate_array(len(random_elements), 16)
             if not random_elements:
                 random_elements = [e_default]  # кубик 20
                 colors_ids = [default_profile_color_id]
 
             for index, emoji_id in enumerate(random_elements, start=0):
+                time = datetime.now().strftime("%H:%M:%S")
                 await client(UpdateColorRequest(
                     for_profile=True,
                     color=colors_ids[index],
                     background_emoji_id=emoji_id))
+                logs["bg"].append(f"[🗿](emoji/{emoji_id}) – {time}")
                 await asyncio.sleep(random.randint(300, 600))  # время смены профиля фона эмозди и цвета
 
-    except Exception as e:
-        print(e)
-        await asyncio.sleep(300)
+        except DocumentInvalidError as e:
+            print(datetime.now(), e)
+            await remove_deleted_packs(emoji_id, array_name_in_json)
+            await asyncio.sleep(5)
+        except Exception as e:
+            print(datetime.now(), e)
+            await asyncio.sleep(300)
 
 
 # сообщения фон и эмоги
 async def change_message_colors_and_emoji():
-    try:
-        await asyncio.sleep(random.randint(1, 7))
-        while True:
+    array_name_in_json = "message_background_emoji"
+    await asyncio.sleep(random.randint(3, 9))
+    while True:
+        try:
             data = await asyncio.to_thread(load_json, file_path)
 
             random_elements = await get_random_ids(data, "message_background_emoji")
@@ -488,15 +538,21 @@ async def change_message_colors_and_emoji():
                 colors_ids = [default_message_color_id]
 
             for index, emoji_id in enumerate(random_elements, start=0):
+                time = datetime.now().strftime("%H:%M:%S")
                 await client(UpdateColorRequest(
                     for_profile=None,
                     color=colors_ids[index],
                     background_emoji_id=emoji_id))
+                logs["msg"].append(f"[🗿](emoji/{emoji_id}) – {time}")
                 await asyncio.sleep(random.randint(100, 150))  # время смены фона сообщений
 
-    except Exception as e:
-        print(e)
-        await asyncio.sleep(300)
+        except DocumentInvalidError as e:
+            print(datetime.now(), e)
+            await remove_deleted_packs(emoji_id, array_name_in_json)
+            await asyncio.sleep(5)
+        except Exception as e:
+            print(datetime.now(), e)
+            await asyncio.sleep(300)
 
 
 async def main():

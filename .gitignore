@@ -4,8 +4,3 @@ data/*.session
 data/*.session-journal
 **/__pycache__/
 .env
-
-app.py
-data.json
-*.session
-*.session-journal

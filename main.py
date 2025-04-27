@@ -307,6 +307,44 @@ async def handler_logs(event):
     await client.edit_message(event.chat_id, event.id, text)
 
 
+# узнать количество эмоги и наборов в data.json
+async def count_emoji():
+    data = await asyncio.to_thread(load_json, file_path)
+    array_names = ["links", "message_background_emoji", "exceptions"]
+    numbers = []
+
+    for array_name in array_names:
+        total_count = 0
+        total_packs = len(data[array_name])
+        if not array_name == "exceptions":
+            for values in data[array_name].values():
+                total_count += len(values)
+            numbers.append(total_count)
+            numbers.append(total_packs)
+        else:
+            numbers.append(total_packs)
+    return numbers
+
+
+@client.on(events.NewMessage(outgoing=True, pattern=r'(?i)\.backup'))
+async def handler_backup(event):
+    counts = await count_emoji()
+    date = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
+    text = f"""
+<em>{date}</em>
+
+<b>В статусе</b>:
+<b>{counts[0]}</b> эмодзи (<b>{counts[1]}</b> packs)
+
+<b>В фоне</b>:
+<b>{counts[2]}</b> эмодзи (<b>{counts[3]}</b> packs)
+
+<b>Исключено</b>:
+<b>{counts[4]}</b> эмодзи
+"""
+    await client.edit_message(event.chat_id, event.id, text, file=file_path, parse_mode='html')
+
+
 @client.on(events.NewMessage(outgoing=True, pattern=r'(?i)\.info'))
 async def handler_commands(event):
     text = f'''
@@ -326,6 +364,8 @@ async def handler_commands(event):
 <code>.clearexc</code> — удалить все эмодзи-исключения
 <code>.clearbg</code> — удалить все наборы из фона
 <code>.clearall</code> — удалить ВСЕ наборы эмодзи
+
+<code>.backup</code> — выгрузить файл со всеми наборами
 
 <code>.logs </code><em>[N]</em> — показать последние N (до 100) эмодзи профиля
 <code>.logsmsg </code><em>[N]</em> — показать последние N (до 100) эмодзи фона сообщений

@@ -27,6 +27,7 @@ api_hash = os.getenv('API_HASH')
 # emojis
 e_del_list = '[🚫](emoji/5462882007451185227)'  # Всего исключено (no)
 e_ban = '[🚫](emoji/5454350746407419714)'  # Было исключено & удалён из статуса (kick)
+e_ban2 = '[🚫](emoji/5463358164705489689)'  # ban
 e_delete = '[😵](emoji/5463274047771000031)'  # Удалены исключения (frag +1)
 e_add = '[✅](emoji/5462956611033117422)'  # добавлен в статус (save)
 e_fix = '[🛠](emoji/5462921117423384478)'  # FIX
@@ -37,6 +38,9 @@ e_invisible = '[🗿](emoji/5323411714836810037)'
 e_omg = '[😵](emoji/5454182632797521992)'  # OMG
 e_sad = '[😵](emoji/5463137996091962323)'  # SAD
 e_default = 5337323753858685200  # стандартный при пустом json (кубик 20)
+
+banALL = False
+ban_list = []
 
 # message colors
 # номер ряда (в приложении) - номер цвета в ряду = id
@@ -275,24 +279,101 @@ async def handler_clear(event):
     await client.edit_message(event.chat_id, event.id, text)
 
 
-@client.on(events.NewMessage(outgoing=True, pattern=r'(?i)\.logs'))
+@client.on(events.NewMessage(outgoing=True, pattern=r'(?i)^\.ban(?:\s+(\d+)|(?:\s+@(\w+))|all)$'))
+async def handler_bans(event):
+    is_banall = event.text.lower().endswith('all')  # Проверка на .banall
+    if is_banall:
+        if banALL:
+            await client.edit_message(event.chat_id, event.id, f"{e_ban2} **Все** запросы уже заблокированы")
+            return
+        await ban_function("all", event.chat_id, event.id)
+    else:
+        username = event.pattern_match.group(2)   # Юзернейм (если есть @)
+        try:
+            if username:
+                user = await client.get_entity(username)
+            else:
+                user_id = event.pattern_match.group(1)  # Число (если есть)
+                user = await client.get_entity(int(user_id))
+        except Exception as e:
+            await client.edit_message(event.chat_id, event.id, e)
+        if user.id in ban_list:
+            await client.edit_message(event.chat_id, event.id, f"{e_ban2} Пользователь **УЖЕ** в бане")
+            return
+        await ban_function("list", event.chat_id, event.id, user=user)
+
+
+async def ban_function(type, chat_id, msg_id, user=None):
+    global banALL, ban_list
+    time = random.randint(900, 1800)
+    if type == "all":
+        banALL = True
+        text = f"{e_ban2} **Все** запросы заблокированы на {time} с"
+        await client.edit_message(chat_id, msg_id, text)
+        await asyncio.sleep(time)
+        banALL = False
+
+    if type == "list":
+        ban_list.append(user.id)
+        last_name = f" {user.last_name}" if user.last_name else ""
+        username = f" @{user.username}" if user.username else ""
+        name = user.first_name + last_name + username
+        text = f"{e_ban2} Запросы **{name}** заблокированы на {time} с"
+        await client.edit_message(chat_id, msg_id, text)
+        await asyncio.sleep(time)
+        ban_list.remove(user.id)
+
+
+@client.on(events.NewMessage(pattern=r'(?i)^\.(logs|logsbg|logsmsg)(?:\s+(\d+)|\s+@(\w+)(?:\s+(\d+))?)?$'))
 async def handler_logs(event):
-    count = event.message.message.rsplit(' ', 1)[-1]
-    try:
-        count = int(count)
-    except Exception:
-        count = 5
+    if event.from_id is None:
+        pass
+    else:
+        if banALL or event.from_id.user_id in ban_list:
+            return
+
+    me = await client.get_me()
+    sender = await event.get_sender()
+    # .logs @username 10
+    # command - .logs
+    # num1 - число после logs если без @username
+    # username_msg - @username
+    # num2 - 10
+    command = event.pattern_match.group(1)
+    num1 = event.pattern_match.group(2)
+    username_msg = event.pattern_match.group(3)
+    num2 = event.pattern_match.group(4)
+
+    # если сообщение не от себя и есть @username(чьи логи хотят) и (число) и человек в контактах
+    if event.out is False and username_msg == me.username and sender.contact:
+        if num2 is None:
+            count = 5
+        else:
+            count = int(num2)
+        type = "send"
+
+    # если сообщение от себя и нет @username
+    elif event.out is True and username_msg is None:
+        if num1 is None:
+            count = 5
+        else:
+            count = int(num1)
+        type = "edit"
+
+    else:
+        return
 
     if not 0 < count < 101:
         count = 5
+
     # фильтры на типы логов
-    if re.match(r'(?i)\.logsbg', event.message.message):
+    if command == ".logsbg":
         last_logs = islice(logs["bg"], max(0, len(logs["bg"]) - count), None)
         if len(logs["bg"]) < count:
             count = len(logs["bg"])
         text = f"{count} эмоджи **фона профиля**:\n"
 
-    elif re.match(r'(?i)\.logsmsg', event.message.message):
+    elif command == "logsmsg":
         last_logs = islice(logs["msg"], max(0, len(logs["msg"]) - count), None)
         if len(logs["msg"]) < count:
             count = len(logs["msg"])
@@ -304,7 +385,11 @@ async def handler_logs(event):
         text = f"{count} эмоджи **профиля**:\n"
 
     text += '\n'.join(map(str, last_logs))
-    await client.edit_message(event.chat_id, event.id, text)
+
+    if type == "edit":
+        await client.edit_message(event.chat_id, event.id, text)
+    elif type == "send":
+        await client.send_message(event.chat_id, text)
 
 
 # узнать количество эмоги и наборов в data.json
@@ -370,6 +455,13 @@ async def handler_commands(event):
 <code>.logs </code><em>[N]</em> — показать последние N (до 100) эмодзи профиля
 <code>.logsmsg </code><em>[N]</em> — показать последние N (до 100) эмодзи фона сообщений
 <code>.logsbg </code><em>[N]</em> — показать последние N (до 100) эмодзи фона профиля
+
+<code>.logs </code><em>@username [N]</em> — показать последние N (до 100) эмодзи профиля данного пользователя
+<code>.logsmsg </code><em>@username [N]</em> — показать последние N (до 100) эмодзи фона сообщений данного пользователя
+<code>.logsbg </code><em>@username [N]</em> — показать последние N (до 100) эмодзи фона профиля данного пользователя
+
+<code>.ban </code><em>@username</em> — временно запретить пользователю запрашивать ваши последние эмодзи
+<code>.banall</code> — временно запретить ВСЕМ пользователям запрашивать ваши последние эмодзи
 
 <code>.🗿</code> — чертила
     '''

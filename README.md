@@ -1,43 +1,83 @@
 # t4k3r - TelegramForker
+Бот для Телеграмма, автоматически меняющий эмодзи в нике, эмодзи и цвет в фоне профиля, а также эмодзи и цвет в ответах на ваши сообщения (естественно, при наличии у вас **Telegram Premium**)
 
-## Docker Install 
+Возможен бан аккаунта. __Всё на свой страх и риск.__ (За год+ использования на нескольких аккаунтах никаких проблем не было)
+## Получение API_ID и API_HASH:
+Перейти по ссылке и залогиниться: https://my.telegram.org/auth?to=apps
 
+Создать приложение с любым названием и оставить открытыми `App api_id` и `App api_hash`
+## Обновление Ubuntu сервера:
 ```
-curl -sSL https://get.docker.com/ | CHANNEL=stable sh
-```
-```
-systemctl enable --now docker
+apt-get update && apt-get upgrade -y
 ```
 
-#### Compose
-
+## Установка Docker Compose  :
 ```
-apt update
 apt install docker-compose-plugin
 ```
 
-## Installation 
 
-_In writing process..._
+## Установка t4k3r на Ubuntu сервере:
 
-Delete ".exapmle" in ".env.exapmle" and fill empty fields by comments.
-
+Скачать репозиторий:
 ```
-docker-compose up -d --remove-orphans
+git clone https://github.com/maqmm/t4k3r.git
 ```
-- add sudo please if you run witout root user
-- add --build flag if you want rebuild image
+Открыть папку:
+```
+cd t4k3r
+```
 
-thats all =)
+Создать .env:
+```
+cp .env.example .env
+```
 
-__If you have standalone installation of Compose use "docker compose" with "- between__
+Редактирование .env: (если нет, то `apt install nano`):
+```
+nano .env
+```
 
-## For updates
+Заполнить `API_ID =` и `API_HASH =` данными из начала мануала (вставлять на ПКМ)
 
+Сохранить и выйти из редактора: `Ctrl+S` и `Ctrl+X`
+
+
+Запустить контейнер:
+```
+docker compose run --rm t4k3r /bin/bash
+```
+
+Дождаться сборки и запустить бота:
+```
+python main.py
+```
+Залогиниться в аккаунт: ввести номер через +7, код подтверждения и облачный пароль (при наличии)
+
+После строчки `Signed in successfully as <ваш ник>; remember to not break the ToS or you will risk an account ban!` закрываем контейнер `Ctrl+C`
+
+Запускаем контейнер в фоне:
+```
+docker compose up -d --remove-orphans
+```
+**Готово!**
+
+**Чтобы узнать актуальные комманды управления нужно в любом чате написать и отправить `.info`**
+
+## Для обновления:
+Открыть папку:
+```
+cd t4k3r
+```
+Скачать актуальную версию:
 ```
 git pull
-docker-compose up -d --build
 ```
+Собрать и запустить контейнер:
+```
+docker compose up -d --build
+```
+**Готово!**
 
 ## About structure
 

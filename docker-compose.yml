@@ -4,5 +4,6 @@ services:
     build: .
     command: python main.py
     restart: always
+    working_dir: /app
     volumes:
       - ./data:/app/data

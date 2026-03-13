@@ -378,7 +378,7 @@ async def handler_logs(event):
         count = 5
 
     # фильтры на типы логов
-    if command == ".logsbg":
+    if command == "logsbg":
         last_logs = islice(logs["bg"], max(0, len(logs["bg"]) - count), None)
         if len(logs["bg"]) < count:
             count = len(logs["bg"])

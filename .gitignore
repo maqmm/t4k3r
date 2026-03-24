@@ -4,3 +4,4 @@ data/*.session
 data/*.session-journal
 **/__pycache__/
 .env
+docker-compose.yml

@@ -706,6 +706,7 @@ async def change_message_colors_and_emoji():
 
 @client.on(events.NewMessage(outgoing=True, pattern=r'(?i)\.http'))
 async def handler_url(event):
+    await client.edit_message(event.chat_id, event.id, f'ℹ️ Получение информации о видео...')
     url = event.text[1:]  # точку убираем вначале, получаем ссылку
 
     # максимальная длительнсть видео

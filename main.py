@@ -727,7 +727,7 @@ async def handler_url(event):
         'no_warnings': True,
     }
 
-    file_path = None
+    file_path_video = None
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             # получение инфы видео (id и длительность)
@@ -749,14 +749,14 @@ async def handler_url(event):
             # Ищем скачанный файл в папке
             for file in os.listdir(download_folder):
                 if file.startswith(video_id):
-                    file_path = os.path.join(download_folder, file)
+                    file_path_video = os.path.join(download_folder, file)
                     break
 
         await client.edit_message(event.chat_id, event.id, f'🔄 Загрузка в чат...')
 
         await client.send_file(
             entity=event.chat_id,
-            file=file_path,
+            file=file_path_video,
             supports_streaming=True,
         )
 
@@ -769,8 +769,8 @@ async def handler_url(event):
         await client.delete_messages(event.chat_id, [event.id, event.id])
 
         # 3. Удаляем временный файл, чтобы не засорять диск
-        if file_path and os.path.exists(file_path):
-            os.remove(file_path)
+        if file_path_video and os.path.exists(file_path_video):
+            os.remove(file_path_video)
 
 
 async def main():

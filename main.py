@@ -4,6 +4,7 @@ import json
 import os
 import re
 import itertools
+import yt_dlp
 
 from telethon import TelegramClient, events
 from telethon.tl.functions.account import UpdateEmojiStatusRequest, UpdateColorRequest
@@ -78,7 +79,7 @@ logs = {
 # message_background_emoji - ссылка на пак : массив адаптивных
 clean_json = {"links": {}, "exceptions": [], "message_background_emoji": {}}
 
-client = TelegramClient(sesion_name, api_id, api_hash, system_version="Windows 10", app_version='6.2.3 x64', device_model='MS-7B89', system_lang_code='ru-RU', lang_code='en')
+client = TelegramClient(sesion_name, api_id, api_hash, system_version="Windows 10", app_version='6.6.2 x64', device_model='MS-7B89', system_lang_code='ru-RU', lang_code='en')
 
 
 # обман чтобы набрать классы (для работы этой конструкции [✅](emoji/5454014806950429357))
@@ -477,6 +478,8 @@ async def handler_commands(event):
 <code>.banall </code><em>[N]</em> — запретить ВСЕМ пользователям запрашивать ваши последние эмодзи на N (до 1440) минут
 <em>Писать N необязательно, по умолчанию время блокировки от 10 до 30 минут</em>
 
+<code>.</code><em>[ссылка на видео]</em> — скачать видео по ссылке (YouTube, TikTok)
+
 <code>.🗿</code> — чертила
     '''
     await client.edit_message(event.chat_id, event.id, text, parse_mode='html')
@@ -699,6 +702,75 @@ async def change_message_colors_and_emoji():
         except Exception as e:
             print(datetime.now(), e)
             await asyncio.sleep(300)
+
+
+@client.on(events.NewMessage(outgoing=True, pattern=r'(?i)\.http'))
+async def handler_url(event):
+    url = event.text[1:]  # точку убираем вначале, получаем ссылку
+
+    # максимальная длительнсть видео
+    max_minutes = 6
+
+    max_seconds = max_minutes * 60
+
+    # папка скачивания
+    download_folder = 'video'
+
+    # Опции для скачивания
+    ydl_opts = {
+        'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',  # Preferred format
+        'merge_output_format': 'mp4',  # Merge audio and video into mp4
+        'paths': {'home': download_folder},
+        'outtmpl': '%(id)s.%(ext)s',  # Output file name template (e.g., Title.mp4)
+        'noplaylist': True,  # Only download the single video, not the whole playlist
+        'quiet': True,
+        'no_warnings': True,
+    }
+
+    file_path = None
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            # получение инфы видео (id и длительность)
+            info = ydl.extract_info(url, download=False)
+            duration = info.get('duration', 0)
+            # Получаем ID видео для формирования имени файла
+            video_id = info.get('id')
+
+            if duration > max_seconds:
+                await asyncio.sleep(1)
+                await client.edit_message(event.chat_id, event.id, f"❌ Видео слишком длинное: {duration // 60}:{duration % 60:02d} (максимум {max_minutes} мин)")
+                return
+
+            await client.edit_message(event.chat_id, event.id, f'🌐 Скачивание видео...')
+
+            # скачивание
+            ydl.download([url])
+
+            # Ищем скачанный файл в папке
+            for file in os.listdir(download_folder):
+                if file.startswith(video_id):
+                    file_path = os.path.join(download_folder, file)
+                    break
+
+        await client.edit_message(event.chat_id, event.id, f'🔄 Загрузка в чат...')
+
+        await client.send_file(
+            entity=event.chat_id,
+            file=file_path,
+            supports_streaming=True,
+        )
+
+    except Exception as e:
+        await asyncio.sleep(1)
+        await client.edit_message(event.chat_id, event.id, f" ⚠️ Ошибка\n{e}")
+
+    else:
+        await asyncio.sleep(1)
+        await client.delete_messages(event.chat_id, [event.id, event.id])
+
+        # 3. Удаляем временный файл, чтобы не засорять диск
+        if file_path and os.path.exists(file_path):
+            os.remove(file_path)
 
 
 async def main():

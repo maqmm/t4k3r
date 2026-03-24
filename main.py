@@ -710,8 +710,7 @@ async def handler_url(event):
     url = event.text[1:]  # точку убираем вначале, получаем ссылку
 
     # максимальная длительнсть видео
-    max_minutes = 6
-
+    max_minutes = 10
     max_seconds = max_minutes * 60
 
     # папка скачивания
@@ -719,7 +718,7 @@ async def handler_url(event):
 
     # Опции для скачивания
     ydl_opts = {
-        'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',  # Preferred format
+        'format': 'bestvideo[height<=1280][width<=1280]+bestaudio[ext=m4a]/best[ext=mp4]/best',  # Preferred format
         'merge_output_format': 'mp4',  # Merge audio and video into mp4
         'paths': {'home': download_folder},
         'outtmpl': '%(id)s.%(ext)s',  # Output file name template (e.g., Title.mp4)

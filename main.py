@@ -4,6 +4,7 @@ import json
 import os
 import re
 import itertools
+import yt_dlp
 
 from telethon import TelegramClient, events
 from telethon.tl.functions.account import UpdateEmojiStatusRequest, UpdateColorRequest
@@ -78,7 +79,7 @@ logs = {
 # message_background_emoji - ссылка на пак : массив адаптивных
 clean_json = {"links": {}, "exceptions": [], "message_background_emoji": {}}
 
-client = TelegramClient(sesion_name, api_id, api_hash, system_version="Windows 10", app_version='5.13.1 x64', device_model='MS-7B89', system_lang_code='ru-RU', lang_code='en')
+client = TelegramClient(sesion_name, api_id, api_hash, system_version="Windows 10", app_version='6.6.2 x64', device_model='MS-7B89', system_lang_code='ru-RU', lang_code='en')
 
 
 # обман чтобы набрать классы (для работы этой конструкции [✅](emoji/5454014806950429357))
@@ -279,14 +280,22 @@ async def handler_clear(event):
     await client.edit_message(event.chat_id, event.id, text)
 
 
-@client.on(events.NewMessage(outgoing=True, pattern=r'(?i)^\.ban(?:\s+(\d+)|(?:\s+@(\w+))|all)$'))
+@client.on(events.NewMessage(outgoing=True, pattern=r'(?i)^\.ban(?:\s+(\d+)|(?:\s+@(\w+))|all)(?:\s+(\d+))?$'))
 async def handler_bans(event):
-    is_banall = event.text.lower().endswith('all')  # Проверка на .banall
+    is_banall = event.text.lower().startswith('.banall')  # Проверка на .banall
+    time = event.pattern_match.group(3)
+
+    if time and not 0 < int(time) < 1441:
+        time = None
+
     if is_banall:
         if banALL:
             await client.edit_message(event.chat_id, event.id, f"{e_ban2} **Все** запросы уже заблокированы")
             return
-        await ban_function("all", event.chat_id, event.id)
+        if time:
+            await ban_function("all", event.chat_id, event.id, time=time)
+        else:
+            await ban_function("all", event.chat_id, event.id)
     else:
         username = event.pattern_match.group(2)   # Юзернейм (если есть @)
         try:
@@ -300,12 +309,15 @@ async def handler_bans(event):
         if user.id in ban_list:
             await client.edit_message(event.chat_id, event.id, f"{e_ban2} Пользователь **УЖЕ** в бане")
             return
-        await ban_function("list", event.chat_id, event.id, user=user)
+        if time:
+            await ban_function("list", event.chat_id, event.id, user=user, time=time)
+        else:
+            await ban_function("list", event.chat_id, event.id, user=user)
 
 
-async def ban_function(type, chat_id, msg_id, user=None):
+async def ban_function(type, chat_id, msg_id, user=None, time=random.randint(10, 30)):
     global banALL, ban_list
-    time = random.randint(900, 1800)
+    time = int(time) * 60 + random.randint(1, 99)
     if type == "all":
         banALL = True
         text = f"{e_ban2} **Все** запросы заблокированы на {time} с"
@@ -324,7 +336,7 @@ async def ban_function(type, chat_id, msg_id, user=None):
         ban_list.remove(user.id)
 
 
-@client.on(events.NewMessage(pattern=r'(?i)^\.(logs|logsbg|logsmsg)(?:\s+(\d+)|\s+@(\w+)(?:\s+(\d+))?)?$'))
+@client.on(events.NewMessage(pattern=r'(?i)^\.(logs|logsbg|logsmsg)(?:\s+(\d+)|\s+@(\w*)(?:\s+(\d+))?)?$'))
 async def handler_logs(event):
     if event.from_id is None:
         pass
@@ -343,9 +355,9 @@ async def handler_logs(event):
     num1 = event.pattern_match.group(2)
     username_msg = event.pattern_match.group(3)
     num2 = event.pattern_match.group(4)
-
-    # если сообщение не от себя и есть @username(чьи логи хотят) и (число) и человек в контактах
-    if event.out is False and username_msg == me.username and sender.contact:
+    # print(event)
+    # если сообщение не от себя и (есть @username(чьи логи хотят) или просто @ если в личке) и (число) и человек в контактах
+    if event.out is False and (username_msg == me.username or (event.is_private and username_msg == "")) and sender.contact:
         if num2 is None:
             count = 5
         else:
@@ -367,7 +379,7 @@ async def handler_logs(event):
         count = 5
 
     # фильтры на типы логов
-    if command == ".logsbg":
+    if command == "logsbg":
         last_logs = islice(logs["bg"], max(0, len(logs["bg"]) - count), None)
         if len(logs["bg"]) < count:
             count = len(logs["bg"])
@@ -455,13 +467,18 @@ async def handler_commands(event):
 <code>.logs </code><em>[N]</em> — показать последние N (до 100) эмодзи профиля
 <code>.logsmsg </code><em>[N]</em> — показать последние N (до 100) эмодзи фона сообщений
 <code>.logsbg </code><em>[N]</em> — показать последние N (до 100) эмодзи фона профиля
+<em>Писать N необязательно, везде по умолчанию выводятся последние 5 эмодзи</em>
 
 <code>.logs </code><em>@username [N]</em> — показать последние N (до 100) эмодзи профиля данного пользователя
 <code>.logsmsg </code><em>@username [N]</em> — показать последние N (до 100) эмодзи фона сообщений данного пользователя
 <code>.logsbg </code><em>@username [N]</em> — показать последние N (до 100) эмодзи фона профиля данного пользователя
+<em>В личных сообщениях вместо @username можно писать просто @ (.logs @ [N])</em>
 
-<code>.ban </code><em>@username</em> — временно запретить пользователю запрашивать ваши последние эмодзи
-<code>.banall</code> — временно запретить ВСЕМ пользователям запрашивать ваши последние эмодзи
+<code>.ban </code><em>@username|userID [N]</em> — запретить пользователю запрашивать ваши последние эмодзи на N (до 1440) минут
+<code>.banall </code><em>[N]</em> — запретить ВСЕМ пользователям запрашивать ваши последние эмодзи на N (до 1440) минут
+<em>Писать N необязательно, по умолчанию время блокировки от 10 до 30 минут</em>
+
+<code>.</code><em>[ссылка на видео]</em> — скачать видео по ссылке (YouTube, TikTok)
 
 <code>.🗿</code> — чертила
     '''
@@ -685,6 +702,75 @@ async def change_message_colors_and_emoji():
         except Exception as e:
             print(datetime.now(), e)
             await asyncio.sleep(300)
+
+
+@client.on(events.NewMessage(outgoing=True, pattern=r'(?i)\.http'))
+async def handler_url(event):
+    await client.edit_message(event.chat_id, event.id, f'ℹ️ Получение информации о видео...')
+    url = event.text[1:]  # точку убираем вначале, получаем ссылку
+
+    # максимальная длительнсть видео
+    max_minutes = 10
+    max_seconds = max_minutes * 60
+
+    # папка скачивания
+    download_folder = 'video'
+
+    # Опции для скачивания
+    ydl_opts = {
+        'format': 'bestvideo[height<=1280][width<=1280]+bestaudio[ext=m4a]/best[ext=mp4]/best',  # Preferred format
+        'merge_output_format': 'mp4',  # Merge audio and video into mp4
+        'paths': {'home': download_folder},
+        'outtmpl': '%(id)s.%(ext)s',  # Output file name template (e.g., Title.mp4)
+        'noplaylist': True,  # Only download the single video, not the whole playlist
+        'quiet': True,
+        'no_warnings': True,
+    }
+
+    file_path_video = None
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            # получение инфы видео (id и длительность)
+            info = ydl.extract_info(url, download=False)
+            duration = info.get('duration', 0)
+            # Получаем ID видео для формирования имени файла
+            video_id = info.get('id')
+
+            if duration > max_seconds:
+                await asyncio.sleep(1)
+                await client.edit_message(event.chat_id, event.id, f"❌ Видео слишком длинное: {duration // 60}:{duration % 60:02d} (максимум {max_minutes} мин)")
+                return
+
+            await client.edit_message(event.chat_id, event.id, f'🌐 Скачивание видео...')
+
+            # скачивание
+            ydl.download([url])
+
+            # Ищем скачанный файл в папке
+            for file in os.listdir(download_folder):
+                if file.startswith(video_id):
+                    file_path_video = os.path.join(download_folder, file)
+                    break
+
+        await client.edit_message(event.chat_id, event.id, f'🔄 Загрузка в чат...')
+
+        await client.send_file(
+            entity=event.chat_id,
+            file=file_path_video,
+            supports_streaming=True,
+        )
+
+    except Exception as e:
+        await asyncio.sleep(1)
+        await client.edit_message(event.chat_id, event.id, f" ⚠️ Ошибка\n{e}")
+
+    else:
+        await asyncio.sleep(1)
+        await client.delete_messages(event.chat_id, [event.id, event.id])
+
+        # 3. Удаляем временный файл, чтобы не засорять диск
+        if file_path_video and os.path.exists(file_path_video):
+            os.remove(file_path_video)
 
 
 async def main():

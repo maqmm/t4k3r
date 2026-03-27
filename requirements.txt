@@ -1,2 +1,4 @@
-telethon
+telethon==1.41.2
 python-dotenv
+yt-dlp
+curl_cffi

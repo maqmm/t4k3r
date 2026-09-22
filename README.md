@@ -11,9 +11,39 @@
 apt-get update && apt-get upgrade -y
 ```
 
-## Установка Docker Compose  :
+## Установка Docker:
 ```
-apt install docker-compose-plugin
+sudo apt install -y ca-certificates curl gnupg
+```
+```
+sudo install -m 0755 -d /etc/apt/keyrings
+```
+```
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
+  | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+```
+```
+sudo chmod a+r /etc/apt/keyrings/docker.gpg
+```
+```
+echo \
+  "deb [arch=$(dpkg --print-architecture) \
+  signed-by=/etc/apt/keyrings/docker.gpg] \
+  https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo $VERSION_CODENAME) stable" \
+  | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+```
+```
+sudo apt update
+
+```
+```
+sudo apt install -y \
+  docker-ce \
+  docker-ce-cli \
+  containerd.io \
+  docker-buildx-plugin \
+  docker-compose-plugin
 ```
 
 
@@ -62,7 +92,12 @@ docker compose up -d --remove-orphans
 ```
 **Готово!**
 
-**Чтобы узнать актуальные комманды управления нужно в любом чате написать и отправить `.info`**
+**Чтобы узнать актуальные команды управления нужно в любом чате написать и отправить `.info`**
+
+**Обычный алгоритм использования бота:**
+1. Скопировать ссылку на эмодзи набор.
+2. Написать в любом чате (можно в Saved Messages) `.add <ссылка на набор>`, чтобы добавить набор в список эмодзи профиля, а если набор адаптивный, то ещё написать `.addbg <ссылка на набор>`, чтобы добавить набор в список фонов профиля и сообщений.
+3. Если нужно исключить какие-то эмодзи из выборки (реклама и т.п.), то написать `.del <эмодзи друг за другом>`
 
 ## Для обновления:
 Открыть папку:

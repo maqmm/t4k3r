@@ -4,3 +4,6 @@ data/*.session
 data/*.session-journal
 **/__pycache__/
 .env
+docker-compose.yml
+data/vless.json
+vless/config.json

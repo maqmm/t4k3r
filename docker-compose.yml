@@ -1,9 +1,38 @@
 services:
+  gateway:
+    container_name: t4k3r-gateway
+    build:
+      context: .
+      dockerfile: Dockerfile.gateway
+    restart: always
+    network_mode: bridge
+    dns:
+      - 1.1.1.1
+    environment:
+      VLESS_ENABLED: ${VLESS_ENABLED:-0}
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    volumes:
+      - ./vless:/etc/xray:ro
+    healthcheck:
+      test: ["CMD-SHELL", "if [ -f /run/gateway.direct ]; then ip -4 route get 1.1.1.1 | grep -q 'dev eth0'; else ip -4 route get 1.1.1.1 | grep -q 'dev xray0' && kill -0 \"$(cat /run/xray.pid)\"; fi"]
+      interval: 5s
+      timeout: 3s
+      retries: 6
+      start_period: 10s
+
   t4k3r:
     container_name: t4k3r
     build: .
     command: python main.py
     restart: always
-    working_dir: /app
+    env_file:
+      - .env
+    network_mode: service:gateway
+    depends_on:
+      gateway:
+        condition: service_healthy
     volumes:
       - ./data:/app/data

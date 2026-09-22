@@ -88,7 +88,7 @@ python main.py
 
 Запускаем контейнер в фоне:
 ```
-docker compose up -d --remove-orphans
+docker compose up -d --build --force-recreate --remove-orphans
 ```
 **Готово!**
 
@@ -110,9 +110,16 @@ git pull
 ```
 Собрать и запустить контейнер:
 ```
-docker compose up -d --build
+docker compose up -d --build --force-recreate --remove-orphans
 ```
 **Готово!**
+
+Сервис `gateway` запускается всегда; бот использует его сетевой namespace.
+Для прокси всего бота установите `VLESS_ENABLED=1` в `.env` и сохраните
+конфигурацию Xray в `vless/config.json`. При выключенном флаге или отсутствии
+либо пустом файле шлюз оставляет обычный прямой маршрут Docker. После изменения
+флага или конфигурации повторно выполните команду запуска с `--force-recreate`,
+чтобы бот подключился к пересозданному сетевому namespace шлюза.
 
 ## About structure
 

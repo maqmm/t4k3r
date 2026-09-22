@@ -1,0 +1,9 @@
+.git
+.env
+data
+vless
+*.bak
+*.bck
+get-docker.sh
+__pycache__
+work

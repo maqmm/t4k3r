@@ -1,0 +1,13 @@
+FROM ghcr.io/xtls/xray-core:26.9.9 AS xray
+
+FROM debian:trixie-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    iproute2 \
+    jq \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=xray /usr/local/bin/xray /usr/local/bin/xray
+COPY docker-vless-entrypoint.sh /usr/local/bin/docker-vless-entrypoint.sh
+
+ENTRYPOINT ["/bin/sh", "/usr/local/bin/docker-vless-entrypoint.sh"]

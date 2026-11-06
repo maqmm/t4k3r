@@ -1,24 +1,37 @@
-# Используем официальный образ Python в качестве базового
-FROM python:3.10-slim
+# Этап сборки Python-зависимостей
+FROM python:3.12-slim AS builder
 
-# Установим зависимости
-RUN apt-get update && apt-get install -y \
+WORKDIR /build
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Установим временную зону
-ENV TZ=Europe/Moscow
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
-
-# Установим необходимые Python пакеты
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
 
-# Скопируем все файлы вашего проекта в контейнер
-COPY . /app
+RUN pip install --no-cache-dir --no-compile \
+    --prefix=/install \
+    -r requirements.txt
 
-# Установим рабочую директорию
+
+# Финальный образ
+FROM python:3.12-slim
+
+ENV TZ=Europe/Moscow \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
 WORKDIR /app
 
-# Запустим скрипт при старте контейнера
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg \
+    tzdata \
+    && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
+    && echo $TZ > /etc/timezone \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /install /usr/local
+
+COPY . .
+
 CMD ["python", "main.py"]

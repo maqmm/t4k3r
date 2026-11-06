@@ -1,5 +1,5 @@
 # Этап сборки Python-зависимостей
-FROM python:3.10-slim AS builder
+FROM python:3.12-slim AS builder
 
 WORKDIR /build
 
@@ -15,7 +15,7 @@ RUN pip install --no-cache-dir --no-compile \
 
 
 # Финальный образ
-FROM python:3.10-slim
+FROM python:3.12-slim
 
 ENV TZ=Europe/Moscow \
     PYTHONUNBUFFERED=1 \

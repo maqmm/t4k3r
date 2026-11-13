@@ -586,32 +586,39 @@ async def paid_messages(event):
         # Просто .paid
         stars = 0
         text = f'{e_off} Платные сообщения отключены'
-        await client.edit_message(event.chat_id, event.id, text)
-
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Отключение платных сообщений")
 
     else:
         stars = int(stars)
 
         if not 1 <= stars <= 35000:
-            text = f"{e_fix} Цена от 1 до 35000{e_star}"
-            await client.edit_message(event.chat_id, event.id, text)
+            await event.edit(f"{e_fix} Цена от 1 до 35000{e_star}")
             return
-
         # .paid 100
         text = f'{e_on} Платные сообщения за {stars}{e_star}'
 
-        await client.edit_message(event.chat_id, event.id, text)
+    try:
+        # Получаем текущие настройки
+        settings = await client(GetGlobalPrivacySettingsRequest())
 
-        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Платные сообщения за {stars} звёзд")
+        # Устанавливаем стоимость
+        settings.noncontact_peers_paid_stars = stars
 
-    # Получаем текущие глобальные настройки
-    settings = await client(GetGlobalPrivacySettingsRequest())
-    # Устанавливаем стоимость
-    settings.noncontact_peers_paid_stars = stars
-    # Сохраняем настройки
-    await client(SetGlobalPrivacySettingsRequest(
-        settings=settings))
+        # Сохраняем настройки
+        await client(SetGlobalPrivacySettingsRequest(
+            settings=settings
+        ))
+
+        # Редактируем команду
+        await event.edit(text)
+
+        print(
+            f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] "
+            f"{'Отключение' if stars == 0 else f'Платные сообщения за {stars} Stars'}"
+        )
+
+    except Exception as e:
+        print(f"Ошибка настройки платных сообщений: {e}")
+        await event.edit(f"{e_fix} Ошибка настройки платных сообщений:\n{e}")
 
 
 async def get_random_ids(data, array_name, max_len=27000):  # ~неделя неповтораящихся

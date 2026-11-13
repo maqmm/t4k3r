@@ -585,7 +585,7 @@ async def paid_messages(event):
     if stars is None:
         # Просто .paid
         stars = 0
-        text = f'{e_off} Сообщения за {stars} выключены'
+        text = f'{e_off} Сообщения за {e_star} выключены'
 
     else:
         stars = int(stars)

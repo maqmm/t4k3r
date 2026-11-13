@@ -38,9 +38,9 @@ e_cleared = '[😵](emoji/5226702984204797593)'  # список исключен
 e_invisible = '[🗿](emoji/5323411714836810037)'
 e_omg = '[😵](emoji/5454182632797521992)'  # OMG
 e_sad = '[😵](emoji/5463137996091962323)'  # SAD
-e_off = '[😵](emoji/6237790860377854962)'  # off
-e_on = '[😵](emoji/6237651574588445185)'  # on
-e_star = '[😵](emoji/5848259999763011021)'  # tg premium star
+e_off = '[❌](emoji/6237790860377854962)'  # off
+e_on = '[✅](emoji/6237651574588445185)'  # on
+e_star = '[⭐️](emoji/5848259999763011021)'  # tg premium star
 e_default = 5337323753858685200  # стандартный при пустом json (кубик 20)
 
 banALL = False
@@ -585,7 +585,7 @@ async def paid_messages(event):
     if stars is None:
         # Просто .paid
         stars = 0
-        text = f'{e_off} Платные сообщения отключены'
+        text = f'{e_off} Сообщения за {stars} выключены'
 
     else:
         stars = int(stars)
@@ -594,7 +594,7 @@ async def paid_messages(event):
             await event.edit(f"{e_fix} Цена от 1 до 35000{e_star}")
             return
         # .paid 100
-        text = f'{e_on} Платные сообщения за {stars}{e_star}'
+        text = f'{e_on} Сообщения за {stars}{e_star} включены'
 
     try:
         # Получаем текущие настройки
@@ -613,7 +613,7 @@ async def paid_messages(event):
 
         print(
             f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] "
-            f"{'Отключение' if stars == 0 else f'Платные сообщения за {stars} Stars'}"
+            f"{'Отключение сообщений за звёзды' if stars == 0 else f'Платные сообщения за {stars} Stars'}"
         )
 
     except Exception as e:

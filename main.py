@@ -7,7 +7,7 @@ import itertools
 import yt_dlp
 
 from telethon import TelegramClient, events
-from telethon.tl.functions.account import UpdateEmojiStatusRequest, UpdateColorRequest
+from telethon.tl.functions.account import UpdateEmojiStatusRequest, UpdateColorRequest, SetGlobalPrivacySettingsRequest, GetGlobalPrivacySettingsRequest
 from telethon.tl.functions.messages import GetStickerSetRequest
 from telethon.tl.types import EmojiStatus, InputStickerSetShortName, MessageEntityCustomEmoji, MessageEntityUrl
 from telethon import types
@@ -38,6 +38,9 @@ e_cleared = '[😵](emoji/5226702984204797593)'  # список исключен
 e_invisible = '[🗿](emoji/5323411714836810037)'
 e_omg = '[😵](emoji/5454182632797521992)'  # OMG
 e_sad = '[😵](emoji/5463137996091962323)'  # SAD
+e_off = '[😵](emoji/6237790860377854962)'  # off
+e_on = '[😵](emoji/6237651574588445185)'  # on
+e_star = '[😵](emoji/5848259999763011021)'  # tg premium star
 e_default = 5337323753858685200  # стандартный при пустом json (кубик 20)
 
 banALL = False
@@ -79,7 +82,7 @@ logs = {
 # message_background_emoji - ссылка на пак : массив адаптивных
 clean_json = {"links": {}, "exceptions": [], "message_background_emoji": {}}
 
-client = TelegramClient(sesion_name, api_id, api_hash, system_version="Windows 10", app_version='6.6.2 x64', device_model='MS-7B89', system_lang_code='ru-RU', lang_code='en')
+client = TelegramClient(sesion_name, api_id, api_hash, system_version="Windows 10", app_version='7.4.3 x64', device_model='MS-7B89', system_lang_code='ru-RU', lang_code='en')
 
 
 # обман чтобы набрать классы (для работы этой конструкции [✅](emoji/5454014806950429357))
@@ -478,6 +481,9 @@ async def handler_commands(event):
 <code>.banall </code><em>[N]</em> — запретить ВСЕМ пользователям запрашивать ваши последние эмодзи на N (до 1440) минут
 <em>Писать N необязательно, по умолчанию время блокировки от 10 до 30 минут</em>
 
+<code>.paid</code> — выключить сообщения за звёзды
+<code>.paid </code><em>[N]</em> — включить сообщения за N звёзд 
+
 <code>.</code><em>[ссылка на видео]</em> — скачать видео по ссылке (YouTube, TikTok и т.п.)
 
 <code>.🗿</code> — чертила
@@ -569,6 +575,43 @@ async def handler_all(event):
             await client.edit_message(event.chat_id, event.id, text, link_preview=False)
         else:
             await client.send_message(event.chat_id, text, link_preview=False)
+
+
+# включение/выключение платных сообщений
+@client.on(events.NewMessage(outgoing=True, pattern=r'(?i)^\.paid(?:\s+(\d+))?$'))
+async def paid_messages(event):
+    stars = event.pattern_match.group(1)
+
+    if stars is None:
+        # Просто .paid
+        stars = 0
+        text = f'{e_off} Платные сообщения отключены'
+        await client.edit_message(event.chat_id, event.id, text)
+
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Отключение платных сообщений")
+
+    else:
+        stars = int(stars)
+
+        if not 1 <= stars <= 35000:
+            text = f"{e_fix} Цена от 1 до 35000{e_star}"
+            await client.edit_message(event.chat_id, event.id, text)
+            return
+
+        # .paid 100
+        text = f'{e_on} Платные сообщения за {stars}{e_star}'
+
+        await client.edit_message(event.chat_id, event.id, text)
+
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Платные сообщения за {stars} звёзд")
+
+    # Получаем текущие глобальные настройки
+    settings = await client(GetGlobalPrivacySettingsRequest())
+    # Устанавливаем стоимость
+    settings.noncontact_peers_paid_stars = stars
+    # Сохраняем настройки
+    await client(SetGlobalPrivacySettingsRequest(
+        settings=settings))
 
 
 async def get_random_ids(data, array_name, max_len=27000):  # ~неделя неповтораящихся
@@ -778,6 +821,8 @@ async def main():
     asyncio.create_task(change_status_emoji())
     asyncio.create_task(change_profile_background_emoji_colors())
     asyncio.create_task(change_message_colors_and_emoji())
+
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Bot Started!")
 
     await client.run_until_disconnected()
 
